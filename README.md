@@ -56,7 +56,7 @@ cd ~/260818_0820_knu_course/knu_course_src_for_student
 
 각 파일은 독립 실행형 Python 프로그램입니다. 별도의 ROS2 패키지 빌드는 필요하지 않습니다.
 
-학생용 파일에는 일부 핵심 부분이 `## TODO`로 비어 있습니다.
+파일에는 일부 핵심 부분이 `## TODO`로 비어 있습니다.
 
 ```bash
 grep -n "TODO" 19_path_tracking_pid_control.py
