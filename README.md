@@ -39,7 +39,7 @@
 CARLA 실행 경로:
 
 ```bash
-~/carla
+~/260818_0820_knu_course/knu_course_data/carla
 ```
 
 YOLO 실습(14)은 별도 환경을 사용합니다.
