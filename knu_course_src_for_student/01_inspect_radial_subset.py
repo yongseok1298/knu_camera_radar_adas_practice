@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
-"""
-Practice 01: RADIal Dataset & Radar Point-Cloud QA
-
-목표
-- RADIal subset의 데이터 구성을 확인합니다.
-- Radar PCL의 좌표계와 Relative Velocity를 이해합니다.
-- Forward ADAS용 ROI를 적용합니다.
-- Radar BEV 및 Range–Velocity Plot을 생성합니다.
-"""
+"""Lab 01: inspect the distributed RADIal subset and radar point-cloud contract."""
 
 from __future__ import annotations
 
 import json
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -23,19 +16,12 @@ from _course_common import (
 )
 
 
-def check_completed(name: str, value) -> None:
-    if value is None:
-        raise NotImplementedError(
-            f"{name}가 아직 완성되지 않았습니다. 해당 ## TODO를 확인하세요."
-        )
-
-
 def main() -> None:
     root = radial_root()
 
-    # ------------------------------------------------------------
-    # Example. Dataset 정보 및 Sensor Modality 검색
-    # ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 1. Dataset structure
+    # ------------------------------------------------------------------
     manifest = json.loads(
         (root / "subset_manifest.json").read_text(encoding="utf-8")
     )
@@ -49,140 +35,55 @@ def main() -> None:
     )
 
     if not pcl_files:
-        raise FileNotFoundError(f"Radar PCL 데이터를 찾을 수 없습니다: {root}")
-
-    # ------------------------------------------------------------
-    # Practice 1. Dataset Split 확인
-    # Dictionary: {key: value for item in iterable}
-    # 사용할 key: "split", "selected_samples"
-    # ------------------------------------------------------------
-
-    ## TODO 1
-    split_name_key = None
-    sample_count_key = None
-
-    check_completed("Practice 1: split_name_key", split_name_key)
-    check_completed("Practice 1: sample_count_key", sample_count_key)
+        raise FileNotFoundError(f"no PCL files under {root}")
 
     split_count = {
-        item[split_name_key]: item[sample_count_key]
+        item["split"]: item["selected_samples"]
         for item in manifest["splits"]
     }
 
-    # ------------------------------------------------------------
-    # Practice 2. Sensor Modality 개수 확인
-    # len(files): 파일 목록에 포함된 원소 개수
-    # ------------------------------------------------------------
-
-    ## TODO 2
-    camera_source = None
-    radar_pcl_source = None
-    radar_fft_source = None
-    freespace_source = None
-
-    check_completed("Practice 2: camera_source", camera_source)
-    check_completed("Practice 2: radar_pcl_source", radar_pcl_source)
-    check_completed("Practice 2: radar_fft_source", radar_fft_source)
-    check_completed("Practice 2: freespace_source", freespace_source)
-
     modalities = {
-        "camera": len(camera_source),
-        "radar_PCL": len(radar_pcl_source),
-        "radar_FFT": len(radar_fft_source),
-        "freespace": len(freespace_source),
+        "camera": len(camera_files),
+        "radar_PCL": len(pcl_files),
+        "radar_FFT": len(fft_files),
+        "freespace": len(freespace_files),
     }
 
-    # ------------------------------------------------------------
-    # Example. 첫 번째 Radar Point Cloud 불러오기
-    # ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 2. Load one radar frame
+    # ------------------------------------------------------------------
     sample_id = sample_id_from_path(pcl_files[0])
     points = load_radial_pcl(pcl_files[0])
 
     if points.ndim != 2 or points.shape[1] < 4:
-        raise ValueError(f"Unexpected Radar PCL shape: {points.shape}")
+        raise ValueError(
+            f"unexpected radar PCL shape: {points.shape}; expected Nx4"
+        )
 
-    # ------------------------------------------------------------
-    # Practice 3. Radar PCL Coordinate Contract
-    #
-    # points[:, i] : 모든 Point의 i번째 Feature 선택
-    #
-    # column 0 : x_forward_m
-    # column 1 : y_left_m
-    # column 2 : z_up_m
-    # column 3 : relative_speed_mps
-    # ------------------------------------------------------------
+    # RADIal course coordinate contract
+    x_forward = points[:, 0]
+    y_left = points[:, 1]
+    z_up = points[:, 2]
+    relative_speed = points[:, 3]
 
-    ## TODO 3
-    x_forward_col = None
-    y_left_col = None
-    z_up_col = None
-    relative_speed_col = None
+    # ------------------------------------------------------------------
+    # 3. Derived radar features
+    # ------------------------------------------------------------------
+    range_xy = np.hypot(x_forward, y_left)
 
-    check_completed("Practice 3: x_forward_col", x_forward_col)
-    check_completed("Practice 3: y_left_col", y_left_col)
-    check_completed("Practice 3: z_up_col", z_up_col)
-    check_completed("Practice 3: relative_speed_col", relative_speed_col)
-
-    x_forward = points[:, x_forward_col]
-    y_left = points[:, y_left_col]
-    z_up = points[:, z_up_col]
-    relative_speed = points[:, relative_speed_col]
-
-    # ------------------------------------------------------------
-    # Practice 4. Radar Range 계산
-    #
-    # np.hypot(x, y)
-    # → sqrt(x² + y²), 피타고라스 정리를 이용한 평면 거리
-    # ------------------------------------------------------------
-
-    ## TODO 4
-    range_x = None
-    range_y = None
-
-    check_completed("Practice 4: range_x", range_x)
-    check_completed("Practice 4: range_y", range_y)
-
-    range_xy = np.hypot(range_x, range_y)
-
-    # ------------------------------------------------------------
-    # Practice 5. Forward ADAS ROI
-    #
-    # np.isfinite(x) : NaN / Inf 제거
-    # np.abs(x)      : 절댓값
-    #
-    # 조건:
-    #   0 < x_forward <= 80 m
-    #   |y_left| <= 20 m
-    # ------------------------------------------------------------
-
-    ## TODO 5
-    roi_forward = None
-    roi_lateral = None
-    roi_velocity = None
-
-    forward_min_m = None
-    forward_max_m = None
-    lateral_max_m = None
-
-    check_completed("Practice 5: roi_forward", roi_forward)
-    check_completed("Practice 5: roi_lateral", roi_lateral)
-    check_completed("Practice 5: roi_velocity", roi_velocity)
-    check_completed("Practice 5: forward_min_m", forward_min_m)
-    check_completed("Practice 5: forward_max_m", forward_max_m)
-    check_completed("Practice 5: lateral_max_m", lateral_max_m)
-
+    # Coarse automotive ROI used only for visualization / data inspection.
     roi_mask = (
-        np.isfinite(roi_forward)
-        & np.isfinite(roi_lateral)
-        & np.isfinite(roi_velocity)
-        & (roi_forward > forward_min_m)
-        & (roi_forward <= forward_max_m)
-        & (np.abs(roi_lateral) <= lateral_max_m)
+        np.isfinite(x_forward)
+        & np.isfinite(y_left)
+        & np.isfinite(relative_speed)
+        & (x_forward > 0.0)
+        & (x_forward <= 80.0)
+        & (np.abs(y_left) <= 20.0)
     )
 
-    # ------------------------------------------------------------
-    # Check. Dataset / Radar 기본 통계
-    # ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 4. Console inspection
+    # ------------------------------------------------------------------
     print("RADIal root :", root)
     print("profile     :", manifest.get("profile"))
     print("samples     :", manifest.get("sample_count"))
@@ -196,7 +97,10 @@ def main() -> None:
         "label rows",
         len(labels.get(sample_id, [])),
     )
-    print("contract    : x_forward, y_left, z_up, relative_speed")
+    print(
+        "contract    : columns = "
+        "x_forward_m, y_left_m, z_up_m, relative_speed_mps"
+    )
     print("ROI points  :", int(np.count_nonzero(roi_mask)))
 
     if np.any(roi_mask):
@@ -213,41 +117,19 @@ def main() -> None:
             f"max={relative_speed[roi_mask].max():.2f}"
         )
 
-    # ------------------------------------------------------------
-    # Practice 6. Radar BEV 입력 구성
-    #
-    # data[roi_mask] : ROI 조건을 통과한 Point만 선택
-    #
-    # X-axis : Lateral Position
-    # Y-axis : Longitudinal Position
-    # Color  : Relative Speed
-    # ------------------------------------------------------------
-
-    ## TODO 6
-    bev_x_source = None
-    bev_y_source = None
-    bev_color_source = None
-
-    check_completed("Practice 6: bev_x_source", bev_x_source)
-    check_completed("Practice 6: bev_y_source", bev_y_source)
-    check_completed("Practice 6: bev_color_source", bev_color_source)
-
-    bev_x = bev_x_source[roi_mask]
-    bev_y = bev_y_source[roi_mask]
-    bev_value = bev_color_source[roi_mask]
-
-    # ------------------------------------------------------------
-    # Result 1. Radar Bird's-Eye View
-    # ------------------------------------------------------------
-    output_dir = root.parent / "results" / "lab01_student"
+    # ------------------------------------------------------------------
+    # 5. Save academic-style plots
+    # ------------------------------------------------------------------
+    output_dir = root.parent / "results" / "lab01"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Figure 1: Radar BEV
     fig, ax = plt.subplots(figsize=(7.2, 6.2))
 
     scatter = ax.scatter(
-        bev_x,
-        bev_y,
-        c=bev_value,
+        y_left[roi_mask],
+        x_forward[roi_mask],
+        c=relative_speed[roi_mask],
         s=18,
         alpha=0.85,
     )
@@ -277,9 +159,7 @@ def main() -> None:
     fig.savefig(bev_path, dpi=180)
     plt.close(fig)
 
-    # ------------------------------------------------------------
-    # Result 2. Range–Velocity Distribution
-    # ------------------------------------------------------------
+    # Figure 2: Range vs relative velocity
     fig, ax = plt.subplots(figsize=(7.2, 5.0))
 
     ax.scatter(
@@ -301,15 +181,9 @@ def main() -> None:
     fig.savefig(rv_path, dpi=180)
     plt.close(fig)
 
-    print()
-    print("Radar BEV     :", bev_path)
-    print("Range-Velocity:", rv_path)
-    print("[PASS] Practice 01 completed")
-
-    # Challenge
-    # forward_max_m: 80 → 50 m
-    # lateral_max_m: 20 → 5 m
-    # 변경 전후 ROI Point 수와 Plot을 비교해보세요.
+    print("BEV plot    :", bev_path)
+    print("R-V plot    :", rv_path)
+    print("[PASS] subset, coordinate contract, and radar QA plots generated")
 
 
 if __name__ == "__main__":
