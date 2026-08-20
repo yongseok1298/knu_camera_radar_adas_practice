@@ -92,6 +92,7 @@ class CarlaCameraRadarBridge(Node):
         self,
         host: str,
         port: int,
+        spawn_index: int | None,
     ) -> None:
 
         super().__init__(
@@ -110,6 +111,8 @@ class CarlaCameraRadarBridge(Node):
         self.world = (
             self.client.get_world()
         )
+
+        self.spawn_index = spawn_index
 
         self.actors: list[
             carla.Actor
@@ -193,32 +196,45 @@ class CarlaCameraRadarBridge(Node):
             "knu_hero",
         )
 
-        for transform in (
+        spawn_points = (
             self.world
             .get_map()
             .get_spawn_points()
-        ):
+        )
 
-            actor = (
-                self.world.try_spawn_actor(
-                    blueprint,
-                    transform,
+        if self.spawn_index is not None:
+            if not 0 <= self.spawn_index < len(spawn_points):
+                raise ValueError(
+                    f"spawn_index must be 0~{len(spawn_points) - 1}"
                 )
+
+            actor = self.world.try_spawn_actor(
+                blueprint,
+                spawn_points[self.spawn_index],
+            )
+
+            if actor is None:
+                raise RuntimeError(
+                    f"spawn point {self.spawn_index} is occupied"
+                )
+
+            self.actors.append(actor)
+            self.get_logger().info(
+                f"spawned knu_hero at spawn_index={self.spawn_index} id={actor.id}"
+            )
+            return actor
+
+        for transform in spawn_points:
+            actor = self.world.try_spawn_actor(
+                blueprint,
+                transform,
             )
 
             if actor is not None:
-
-                self.actors.append(
-                    actor
-                )
-
+                self.actors.append(actor)
                 self.get_logger().info(
-                    (
-                        "spawned stationary "
-                        f"knu_hero id={actor.id}"
-                    )
+                    f"spawned stationary knu_hero id={actor.id}"
                 )
-
                 return actor
 
         raise RuntimeError(
@@ -649,6 +665,12 @@ def main() -> None:
         default=2000,
     )
 
+    parser.add_argument(
+        "--spawn-index",
+        type=int,
+        default=None,
+    )
+
     args = parser.parse_args()
 
     rclpy.init()
@@ -657,6 +679,7 @@ def main() -> None:
         CarlaCameraRadarBridge(
             args.host,
             args.port,
+            args.spawn_index,
         )
     )
 
